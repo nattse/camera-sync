@@ -28,7 +28,6 @@ from PyQt5.QtWidgets import (
 )
 
 class FileBrowser(QWidget):
-
     def __init__(self):
         QWidget.__init__(self)
         layout = QHBoxLayout()
@@ -74,7 +73,6 @@ class FileBrowser(QWidget):
         self.window.show()
 
 class sync_window(QMainWindow):
-    
     def __init__(self, vid_list):
         super().__init__()
         self.setWindowFlags(Qt.WindowStaysOnTopHint)
@@ -94,7 +92,6 @@ class sync_window(QMainWindow):
         self.setCentralWidget(self.tabs)
     
 class presync(QWidget):
-    
     def __init__(self, vid_name):
         super().__init__()
         self.run_sync(vid_name)
@@ -222,7 +219,6 @@ class presync(QWidget):
         return
     
 class sync(QWidget):
-    
     def __init__(self, vid_name):
         super().__init__()
         
