@@ -168,28 +168,33 @@ class presync(QWidget):
         self.show()
         
     def start_cutting(self, vid_name):
-        prefix, suffix = self.short_name.split('.')
+        prefix, suffix = vid_name.split('.')
         new_path = prefix + '-frame_synced.' + suffix
+        print(new_path)
         cap = cv2.VideoCapture(vid_name)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         code = cap.get(cv2.CAP_PROP_FOURCC)
         codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
-        output = cv2.VideoWriter(new_path, 
-                                 cv2.VideoWriter_fourcc(*'MJPG'),
+        self.output = cv2.VideoWriter(new_path, 
+                                 cv2.VideoWriter_fourcc(*codec),
                                  30, (width,height))
         cap.set(cv2.CAP_PROP_POS_FRAMES,self.sync_window.frame_num)
+        print(f'starting frames here: {self.sync_window.frame_num}')
+        count = 0
         while True:
+            count += 1
+            print(f'counting frames: {count}')
             flag, frame = cap.read()
             pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
             if not flag:
-                break
+                continue
             if pos_frame == length:
                 break
-            output.write(frame)
+            self.output.write(frame)
         cap.release()
-        output.release()
+        self.output.release()
     
     def clearLayout(self, vid_name):
         self.image_label_off.deleteLater()
@@ -323,9 +328,9 @@ class sync(QWidget):
         self.frame_num = switch_frame
         
         
-#f = FileBrowser()
+f = FileBrowser()
 #temp_path = '/Users/nathanieltse/Documents/anipose_test/inbox_3cam/today_cam/videos-raw/mouse_1_3_cam2_trimmedDLC_resnet101_inOFcamsApr5shuffle4_640000.mov'
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = FileBrowser()
-    sys.exit(app.exec_())
+#if __name__ == '__main__':
+#    app = QApplication(sys.argv)
+#    ex = FileBrowser()
+#    sys.exit(app.exec_())
