@@ -14,23 +14,10 @@ from PyQt5.QtGui import QPixmap, QColor, QImage
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
-    QCheckBox,
-    QComboBox,
-    QDateEdit,
-    QDateTimeEdit,
-    QDial,
-    QDoubleSpinBox,
-    QFontComboBox,
     QLabel,
-    QLCDNumber,
-    QLineEdit,
     QMainWindow,
-    QProgressBar,
     QPushButton,
-    QRadioButton,
     QSlider,
-    QSpinBox,
-    QTimeEdit,
     QVBoxLayout,
     QWidget,
     QHBoxLayout,
@@ -327,10 +314,8 @@ class sync(QWidget):
         self.returns = images_to_check
         self.frame_num = switch_frame
         
-        
-f = FileBrowser()
-#temp_path = '/Users/nathanieltse/Documents/anipose_test/inbox_3cam/today_cam/videos-raw/mouse_1_3_cam2_trimmedDLC_resnet101_inOFcamsApr5shuffle4_640000.mov'
-#if __name__ == '__main__':
-#    app = QApplication(sys.argv)
-#    ex = FileBrowser()
-#    sys.exit(app.exec_())
+       
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = FileBrowser()
+    sys.exit(app.exec_())
