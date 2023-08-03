@@ -1,0 +1,10 @@
+name: camera-sync
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - opencv
+  - matplotlib
+  - pyqt
+prefix: /Users/nathanieltse/anaconda3/envs/test_env
