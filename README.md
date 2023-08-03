@@ -1,4 +1,7 @@
-# Easily synchronize any number of videos using a visual cue
+# camera_sync
+A simple way to synchronize any number of videos using a visual cue, created for use in 3D tracking via [DeepLabCut](https://github.com/DeepLabCut/DeepLabCut) or [Anipose](https://github.com/lambdaloop/anipose). 
+
+*Audio is not currently included*
 
 ## Procedure
 
