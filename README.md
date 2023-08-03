@@ -18,15 +18,15 @@ A simple way to synchronize any number of videos using a visual cue, created for
 
 5. Adjust top slider bar to just before signal ON (does not need to be exact but getting it closer reduces the chances of having to redo this step)
 
-<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_1.png" width="400">   <img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_2.png" width="400">
+<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_1.png" width="500">   <img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_2.png" width="500">
 
 5. Adjust bottom slider bar to frame when signal is ON (again, does not need to be exact but closer to the first frame of signal ON is better). To confirm choices, press ESC
 
-<img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_1.png" width="400">   <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_2.png" width="400">
+<img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_1.png" width="500">   <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_2.png" width="500">
 
 7. Drag to draw rectangular ROI around signal. ROI only needs to be large enough that you can comfortably verify the signal on/off state in the next step. Press ESC
 
-<img src="https://github.com/nattse/camera_sync/blob/main/store/ROI_1.png" width="300">   <img src="https://github.com/nattse/camera_sync/blob/main/store/ROI_2.png" width="300">
+<img src="https://github.com/nattse/camera_sync/blob/main/store/ROI_1.png" width="400">   <img src="https://github.com/nattse/camera_sync/blob/main/store/ROI_2.png" width="400">
 
 7. Repeat signal OFF/ON, ROI selection process for each video
 Inspect the results for each video. Top frame should show the signal in the OFF state. Bottom frame should show the signal in the ON state. If this is not the case, click *redo*, otherwise proceed to *trim video*
