@@ -28,11 +28,11 @@ This program is still quite small and you may already have `opencv`, `matplotlib
 2. Use both sliders to find where the synchronizing signal turns on in the video. Place the top slider right before the signal turns ON and the bottom slider right after the signal is ON.
    
 <p align="center">
-<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_1.png" width="500"> <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_1.png" width="500">
+<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_1.png" width="400"> <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_1.png" width="400">
 </p>
 
 <p align="center">
-<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_2.png" width="500"> <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_2.png" width="500">
+<img src="https://github.com/nattse/camera_sync/blob/main/store/pre_sig_2.png" width="400"> <img src="https://github.com/nattse/camera_sync/blob/main/store/post_sig_2.png" width="400">
 </p>
 
 <p align="center">
