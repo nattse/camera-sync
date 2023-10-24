@@ -7,4 +7,5 @@ dependencies:
   - opencv
   - matplotlib
   - pyqt
+  - tqdm
 prefix: /Users/nathanieltse/anaconda3/envs/test_env
