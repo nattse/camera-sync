@@ -362,7 +362,7 @@ class sync(QWidget):
         end = cv2.getTrackbarPos('sig_on','video')
         framerange = (start,end)
         cv2.destroyAllWindows()
-        cap.set(cv2.CAP_PROP_POS_FRAMES,start)
+        cap.set(cv2.CAP_PROP_POS_FRAMES,end)
         while True:
             flag, frame = cap.read()
             if flag:
