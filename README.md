@@ -14,7 +14,7 @@ A simple way to synchronize any number of videos using a visual cue, created for
 
 3. Activate environment using `conda activate camera-sync`
 
-4. Start GUI with `python3 sync_gui.py`
+4. Start GUI with `python3 sync_gui_lite.py`
 
 ### Alternative
 
