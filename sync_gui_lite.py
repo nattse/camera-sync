@@ -192,6 +192,9 @@ class presync(QWidget):
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         code = cap.get(cv2.CAP_PROP_FOURCC)
         codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
+        print(f'\n\n\nWARNING: cutting with sync_gui_lite limits your output video to 30 FPS - use' \
+              f'sync_decapitator if you need a different FPS or want to do the processing somewhere' \
+              f'other than this computer\n\n\n')
         self.output = cv2.VideoWriter(new_path, 
                                  cv2.VideoWriter_fourcc(*codec),
                                  30, (width,height))
@@ -200,12 +203,12 @@ class presync(QWidget):
         count = 0
         dropped_count = 0
         frame_time = time.time()
-        for a in tqdm(range(length - self.sync_window.frame_num)):
+        for a in tqdm(range(length)):
             count += 1
             flag, frame = cap.read()
             pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-            #print(f'total frames: {length}')
-            #print(f'counting frames: {pos_frame}')
+            if pos_frame < self.sync_window.frame_num:
+                continue
             if time.time() - frame_time > 5:
                 if pos_frame > (length - 10):
                     print(f'looks like we got stuck at {pos_frame} out of {length}, breaking')
