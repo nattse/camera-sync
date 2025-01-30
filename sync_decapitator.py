@@ -6,7 +6,7 @@ from tqdm import tqdm
 import time
 
 class cutter:
-    def __init__(self, batch_data_file, index = None):
+    def __init__(self, batch_data_file, index = None, vid_FPS = 30):
         folder = os.path.split(batch_data_file)[0]
         vid_list = pd.read_csv(batch_data_file, index_col = 0)
         vid_files = os.listdir(os.path.split(batch_data_file)[0])
@@ -23,9 +23,9 @@ class cutter:
                 to_read_vid = [i for i in vid_files if i == to_read]
                 assert len(to_read_vid) == 1
                 video_path = os.path.join(folder, to_read_vid[0])
-                self.start_cutting(video_path, frame['frame'])
+                self.start_cutting(video_path, frame['frame'], vid_FPS)
 
-    def start_cutting(self, vid_name, split_frame):
+    def start_cutting(self, vid_name, split_frame, vid_FPS):
             prefix, suffix = vid_name.split('.')
             new_path = prefix + '-frame_synced.' + suffix
             print(f'Cutting up {vid_name} into')
@@ -38,9 +38,7 @@ class cutter:
             codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
             self.output = cv2.VideoWriter(new_path, 
                                      cv2.VideoWriter_fourcc(*codec),
-                                     30, (width,height))
-            #cap.set(cv2.CAP_PROP_POS_FRAMES,self.sync_window.frame_num)
-            print(f'starting frames here: {split_frame}')
+                                     vid_FPS, (width,height))
             count = 0
             dropped_count = 0
             frame_time = time.time()
@@ -50,8 +48,6 @@ class cutter:
                 pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
                 if pos_frame < split_frame:
                     continue
-                #print(f'total frames: {length}')
-                #print(f'counting frames: {pos_frame}')
                 if time.time() - frame_time > 5:
                     if pos_frame > (length - 10):
                         print(f'looks like we got stuck at {pos_frame} out of {length}, breaking')
@@ -73,4 +69,4 @@ if __name__ == '__main__':
     if len(sys.argv) >= 2:
         cutter(sys.argv[1])
     else:
-        cutter(sys.argv[1], sys.argv[2])
+        cutter(sys.argv[1], sys.argv[2], sys.argv[3]) # The cut_times.csv file location, the index of the file you want to cut, and the FPS
