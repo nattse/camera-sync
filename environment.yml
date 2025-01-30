@@ -8,4 +8,6 @@ dependencies:
   - matplotlib
   - pyqt
   - tqdm
+  - pandas
+  - numpy
 prefix: /Users/nathanieltse/anaconda3/envs/test_env
