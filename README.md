@@ -52,8 +52,9 @@ Top slider position: LED off (left). Bottom slider position: LED on (right)
 
 5. Repeat signal OFF/ON, ROI selection process for each video
 
-6. Inspect the results for each video. Top frame should show the cropped signal in the OFF state. Bottom frame should show the cropped signal in the ON state. If this is not the case, click *redo*, otherwise proceed to *trim video*
-
+6. Inspect the results for each video. Top frame should show the cropped signal in the OFF state. Bottom frame should show the cropped signal in the ON state. If this is not the case, click *redo*, otherwise proceed to *trim video* on the spot, or export all of the syncing video frames in one file, cut_times.csv. The latter is recommended, as **sync_gui_lite.py automatically assumes your videos are recorded at 30 FPS**, whereas sync_decapitator.py allows you to specify the framerate.
+7. If you choose to export the cut_times.csv file, ensure that csv file and all of the videos it references are contained in the same directory. From there, simply run `python sync_decapitator.py PATH_TO_CSV INDEX FRAMERATE`, where PATH_TO_CSV is what it sounds like, INDEX is the index of the video in cut_times.csv that you want to cut, and FRAMERATE is the FPS of your original video.
+   
 <p align="center">
 <img src="https://github.com/nattse/camera_sync/blob/main/store/conf_1.png" width="300">  <img src="https://github.com/nattse/camera_sync/blob/main/store/conf_2.png" width="300">
 </p>
