@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul 31 15:35:04 2023
-
-@author: nathanieltse
+Do not use this, for it uses cap.set(cv2.CAP_PROP_POS_FRAMES,self.sync_window.frame_num) which is not trustworthy.
+I only keep it to remember how I originally structured the GUI.
 """
 import cv2
 import time
