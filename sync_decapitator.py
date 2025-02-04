@@ -5,14 +5,20 @@ import sys
 from tqdm import tqdm
 import time
 
+"""From the command line, simply run `python sync_decapitator.py CUTFILE INDEX FPS`
+CUTFILE is the cut_times.csv file you got from sync_gui_lite.py - make sure this file and the video files are in the same directory!
+INDEX is the file you'd like to cut, 1-indexed. Use -1 to cut all files in the .csv
+FPS is the original videos frames per second
+"""
+
 class cutter:
-    def __init__(self, batch_data_file, index = None, vid_FPS = 30):
+    def __init__(self, batch_data_file, index = -1, vid_FPS = 30):
         folder = os.path.split(batch_data_file)[0]
         vid_list = pd.read_csv(batch_data_file, index_col = 0)
         vid_files = os.listdir(os.path.split(batch_data_file)[0])
         vid_files = [i for i in vid_files if not i.startswith('.')]
         vid_files = [i for i in vid_files if not 'frame_synced' in i]
-        if not index is None:
+        if not index == -1:
             to_read = vid_list.columns[index]
             to_read_vid = [i for i in vid_files if i == to_read]
             assert len(to_read_vid) == 1
@@ -66,7 +72,4 @@ class cutter:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) >= 2:
-        cutter(sys.argv[1])
-    else:
-        cutter(sys.argv[1], sys.argv[2], sys.argv[3]) # The cut_times.csv file location, the index of the file you want to cut, and the FPS
+    cutter(sys.argv[1], sys.argv[2], sys.argv[3]) # The cut_times.csv file location, the index of the file you want to cut, and the FPS
