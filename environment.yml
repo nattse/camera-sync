@@ -10,4 +10,4 @@ dependencies:
   - tqdm
   - pandas
   - numpy
-prefix: /Users/nathanieltse/anaconda3/envs/test_env
+prefix: /home/leelab/anaconda3/envs/camera-sync

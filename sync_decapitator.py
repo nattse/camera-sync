@@ -72,4 +72,7 @@ class cutter:
 
 
 if __name__ == '__main__':
-    cutter(sys.argv[1], sys.argv[2], sys.argv[3]) # The cut_times.csv file location, the index of the file you want to cut, and the FPS
+    path_input = sys.argv[1]
+    index_input = int(sys.argv[2])
+    fps_input = int(sys.argv[3])
+    cutter(path_input, index_input, fps_input) # The cut_times.csv file location, the index of the file you want to cut, and the FPS
