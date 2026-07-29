@@ -19,10 +19,12 @@ class cutter:
         vid_files = [i for i in vid_files if not i.startswith('.')]
         vid_files = [i for i in vid_files if not 'frame_synced' in i]
         if not index == -1:
-            to_read = vid_list.columns[index]
-            to_read_vid = [i for i in vid_files if i == to_read]
+            vid_name = vid_list.index[index]
+            frame = vid_list.iloc[index].item()
+            to_read_vid = [i for i in vid_files if i == vid_name]
             assert len(to_read_vid) == 1
-            self.start_cutting(to_read_vid[0])
+            video_path = os.path.join(folder, to_read_vid[0])
+            self.start_cutting(video_path, frame, vid_FPS)
         else:
             for to_read, frame in vid_list.iterrows():
                 print(f'Video file: {to_read}, frame: {frame}')
@@ -42,6 +44,7 @@ class cutter:
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             code = cap.get(cv2.CAP_PROP_FOURCC)
             codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
+            print(codec)
             self.output = cv2.VideoWriter(new_path, 
                                      cv2.VideoWriter_fourcc(*codec),
                                      vid_FPS, (width,height))
