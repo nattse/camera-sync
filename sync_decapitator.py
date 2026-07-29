@@ -34,16 +34,19 @@ class cutter:
                 self.start_cutting(video_path, frame['frame'], vid_FPS)
 
     def start_cutting(self, vid_name, split_frame, vid_FPS):
-            prefix, suffix = vid_name.split('.')
-            new_path = prefix + '-frame_synced.' + suffix
+            base, ext = os.path.splitext(vid_name)
+            new_path = base + '-frame_synced' + ext
             print(f'Cutting up {vid_name} into')
             print(new_path)
             cap = cv2.VideoCapture(vid_name)
             length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            code = cap.get(cv2.CAP_PROP_FOURCC)
-            codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
+            if ext.lower() == '.mp4':
+                codec = 'mp4v'
+            else:
+                code = cap.get(cv2.CAP_PROP_FOURCC)
+                codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
             print(codec)
             self.output = cv2.VideoWriter(new_path, 
                                      cv2.VideoWriter_fourcc(*codec),
