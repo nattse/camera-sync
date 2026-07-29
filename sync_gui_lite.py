@@ -146,12 +146,13 @@ class presync(QWidget):
     
     def run_sync(self, vid_name):
         self.sync_window = sync(vid_name)
-        images_to_check = self.sync_window.returns
-        frame_num = self.sync_window.frame_num
+        images_to_check = self.sync_window.returns # Dictionary containing the selected area of video frame during last signal off and first signal on 
+        self.masterFrameNum = self.sync_window.frame_num # The actual frame number where off turns to on
+
         self.end_images = QVBoxLayout()
         self.commands = QVBoxLayout()
         self.total_tab = QHBoxLayout()
-        if images_to_check is None or frame_num is None:
+        if images_to_check is None or self.masterFrameNum is None:
             self.show_error()
         else:
             conv = self.convert_cv_qt(images_to_check['signal off'])
@@ -165,7 +166,7 @@ class presync(QWidget):
             
             conv_on = self.convert_cv_qt(images_to_check['signal on'])
             self.image_label_on = QLabel(self)
-            self.textLabel_on = QLabel(f'on {frame_num}')
+            self.textLabel_on = QLabel(f'on {self.masterFrameNum}')
             self.end_images.addWidget(self.image_label_on)
             self.end_images.addWidget(self.textLabel_on)
             height, width = images_to_check['signal on'].shape[0], images_to_check['signal on'].shape[1]
@@ -177,10 +178,41 @@ class presync(QWidget):
         self.commands.addWidget(self.begin_trim)
         self.redo = QPushButton('redo')
         self.commands.addWidget(self.redo)
+
+        self.increments = QHBoxLayout()
+        self.frameBack = QPushButton('Frame back')
+        self.frameBack.clicked.connect(self.setFrameBack)
+        self.increments.addWidget(self.frameBack)
+        self.frameNext = QPushButton('Frame forward')
+        self.frameNext.clicked.connect(self.setFrameNext)
+        self.increments.addWidget(self.frameNext)
+        self.commands.addLayout(self.increments)
+
         self.total_tab.addLayout(self.end_images)
         self.total_tab.addLayout(self.commands)
         self.setLayout(self.total_tab)
         self.show()
+
+    def setFrameBack(self):
+        self.masterFrameNum -= 1
+        frameROI = self.sync_window.get_frame_image(self.masterFrameNum - 1)
+        frameROI = self.convert_cv_qt(frameROI)
+        self.image_label_off.setPixmap(frameROI)
+
+        frameROI_on = self.sync_window.get_frame_image(self.masterFrameNum)
+        frameROI_on = self.convert_cv_qt(frameROI_on)
+        self.image_label_on.setPixmap(frameROI_on)
+
+
+    def setFrameNext(self):
+        self.masterFrameNum += 1
+        frameROI = self.sync_window.get_frame_image(self.masterFrameNum - 1)
+        frameROI = self.convert_cv_qt(frameROI)
+        self.image_label_off.setPixmap(frameROI)
+
+        frameROI_on = self.sync_window.get_frame_image(self.masterFrameNum)
+        frameROI_on = self.convert_cv_qt(frameROI_on)
+        self.image_label_on.setPixmap(frameROI_on)
         
     def start_cutting(self, vid_name):
         prefix, suffix = vid_name.split('.')
@@ -198,8 +230,8 @@ class presync(QWidget):
         self.output = cv2.VideoWriter(new_path, 
                                  cv2.VideoWriter_fourcc(*codec),
                                  30, (width,height))
-        cap.set(cv2.CAP_PROP_POS_FRAMES,self.sync_window.frame_num)
-        print(f'starting frames here: {self.sync_window.frame_num}')
+        cap.set(cv2.CAP_PROP_POS_FRAMES, self.masterFrameNum)
+        print(f'starting frames here: {self.masterFrameNum}')
         count = 0
         dropped_count = 0
         frame_time = time.time()
@@ -207,7 +239,7 @@ class presync(QWidget):
             count += 1
             flag, frame = cap.read()
             pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-            if pos_frame < self.sync_window.frame_num:
+            if pos_frame < self.masterFrameNum:
                 continue
             if time.time() - frame_time > 5:
                 if pos_frame > (length - 10):
@@ -233,7 +265,7 @@ class presync(QWidget):
         else:
             df = pd.DataFrame()
         print(f'Exporting {vid_name} to csv...')
-        df.loc[os.path.split(vid_name)[-1], 'frame'] = self.sync_window.frame_num
+        df.loc[os.path.split(vid_name)[-1], 'frame'] = self.masterFrameNum
         df.to_csv(batch_data_file)
 
     def clearLayout(self, vid_name):
@@ -243,8 +275,8 @@ class presync(QWidget):
         self.textLabel_on.deleteLater()
         self.sync_window = sync(vid_name)
         images_to_check = self.sync_window.returns
-        frame_num = self.sync_window.frame_num
-        if images_to_check is None or frame_num is None:
+        self.masterFrameNum = self.sync_window.frame_num
+        if images_to_check is None or self.masterFrameNum is None:
             self.show_error()
         else:
             conv = self.convert_cv_qt(images_to_check['signal off'])
@@ -258,7 +290,7 @@ class presync(QWidget):
             
             conv_on = self.convert_cv_qt(images_to_check['signal on'])
             self.image_label_on = QLabel(self)
-            self.textLabel_on = QLabel(f'on {frame_num}')
+            self.textLabel_on = QLabel(f'on {self.masterFrameNum}')
             self.end_images.addWidget(self.image_label_on)
             self.end_images.addWidget(self.textLabel_on)
             height, width = images_to_check['signal on'].shape[0], images_to_check['signal on'].shape[1]
@@ -374,7 +406,7 @@ class sync(QWidget):
                     ax.set_facecolor('black')
                     axs[0, count].set_title(count + framerange[0])
             plt.show()
-        
+        self.vidName = vid_name
         cap = cv2.VideoCapture(vid_name)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         cv2.namedWindow('video')
@@ -426,10 +458,21 @@ class sync(QWidget):
                                                                                             cap)
         self.returns = images_to_check
         self.frame_num = switch_frame
+        self.r = r
 
         if elaborate:
             show_work(framerange, r, cap)
-        
+
+    def get_frame_image(self, frameNum):
+        cap = cv2.VideoCapture(self.vidName)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frameNum)
+        while True:
+            flag, frame = cap.read()
+            if flag:
+                frameROI = frame[int(self.r[1]):int(self.r[1] + self.r[3]), int(self.r[0]):int(self.r[0] + self.r[2])]
+                break
+        return frameROI
        
 if __name__ == '__main__':
     app = QApplication(sys.argv)
