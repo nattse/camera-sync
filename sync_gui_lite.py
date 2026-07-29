@@ -7,18 +7,21 @@ Created on Mon Jul 31 15:35:04 2023
 """
 import cv2
 import time
+import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
 from tqdm import tqdm
 import PyQt5
 from PyQt5.QtGui import QPixmap, QColor, QImage
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QRect, QSize
 from PyQt5.QtWidgets import (
     QApplication,
+    QDialog,
     QLabel,
     QMainWindow,
     QPushButton,
+    QRubberBand,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -44,6 +47,10 @@ class FileBrowser(QWidget):
         self.start_button.setDisabled(True)
         self.start_button.clicked.connect(self.start)
         layout_left.addWidget(self.start_button)
+        self.quick_cut_button = QPushButton('quick cut video')
+        self.quick_cut_button.setDisabled(True)
+        self.quick_cut_button.clicked.connect(self.quick_cut)
+        layout_left.addWidget(self.quick_cut_button)
         self.vid_list = QListWidget()
         self.vid_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
         layout_right.addWidget(self.vid_list)
@@ -55,13 +62,14 @@ class FileBrowser(QWidget):
         self.setLayout(layout)
         #self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setWindowTitle("File Browsing Dialog")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(400, 340)
         self.show()
         
     def browse_files(self):
         videos = QFileDialog.getOpenFileNames(self, caption='Choose Video Files')[0]
         self.vid_list.addItems(videos)
         self.start_button.setDisabled(False)
+        self.quick_cut_button.setDisabled(False)
         
     def remove_vids(self):
         #print([i.row() for i in self.vid_list.selectedIndexes()])             # Can't iterate over indexes b/c every item removed changes the index 
@@ -71,6 +79,13 @@ class FileBrowser(QWidget):
                     row_to_remove = self.vid_list.row(item)                    # get its place in the QListWidget
                     self.vid_list.takeItem(row_to_remove)                      # and remove
                     
+    def quick_cut(self):
+        selected = self.vid_list.selectedItems()
+        target = selected[0].text() if selected else self.vid_list.item(0).text()
+        self.quick_cut_windows = getattr(self, 'quick_cut_windows', [])
+        w = QuickCutWindow(target)
+        self.quick_cut_windows.append(w)
+
     def start(self):
         self.hide()
         self.window = sync_window(self.vid_list)
@@ -215,15 +230,18 @@ class presync(QWidget):
         self.image_label_on.setPixmap(frameROI_on)
         
     def start_cutting(self, vid_name):
-        prefix, suffix = vid_name.split('.')
-        new_path = prefix + '-frame_synced.' + suffix
+        base, ext = os.path.splitext(vid_name)
+        new_path = base + '-frame_synced' + ext
         print(new_path)
         cap = cv2.VideoCapture(vid_name)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        code = cap.get(cv2.CAP_PROP_FOURCC)
-        codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
+        if ext.lower() == '.mp4':
+            codec = 'mp4v'
+        else:
+            code = cap.get(cv2.CAP_PROP_FOURCC)
+            codec = int(code).to_bytes(4, byteorder=sys.byteorder).decode()
         print(f'\n\n\nWARNING: cutting with sync_gui_lite limits your output video to 30 FPS - use' \
               f'sync_decapitator if you need a different FPS or want to do the processing somewhere' \
               f'other than this computer\n\n\n')
@@ -306,6 +324,129 @@ class presync(QWidget):
         self.textLabel_on = QLabel('error')
         return
     
+class FrameRangeSelector(QDialog):
+    """Modal dialog for selecting sig_off / sig_on frame range with Qt sliders."""
+    def __init__(self, cap, length, parent=None):
+        super().__init__(parent)
+        self._cap = cap
+        self.setWindowTitle('Select frame range')
+        layout = QVBoxLayout()
+
+        self._frame_label = QLabel()
+        self._frame_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self._frame_label)
+
+        self._info_label = QLabel()
+        self._info_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self._info_label)
+
+        layout.addWidget(QLabel('Signal Off (start of range):'))
+        self.off_slider = QSlider(Qt.Horizontal)
+        self.off_slider.setRange(0, length)
+        self.off_slider.setValue(0)
+        self.off_slider.setFocusPolicy(Qt.StrongFocus)
+        self.off_slider.valueChanged.connect(lambda v: self._show_frame(v, 'off'))
+        layout.addWidget(self.off_slider)
+
+        layout.addWidget(QLabel('Signal On (end of range):'))
+        self.on_slider = QSlider(Qt.Horizontal)
+        self.on_slider.setRange(0, length)
+        self.on_slider.setValue(min(100, length))
+        self.on_slider.setFocusPolicy(Qt.StrongFocus)
+        self.on_slider.valueChanged.connect(lambda v: self._show_frame(v, 'on'))
+        layout.addWidget(self.on_slider)
+
+        hint = QLabel('Tab between sliders  |  ← → arrows move frame by frame')
+        hint.setAlignment(Qt.AlignCenter)
+        layout.addWidget(hint)
+
+        ok_btn = QPushButton('Confirm range')
+        ok_btn.clicked.connect(self.accept)
+        layout.addWidget(ok_btn)
+
+        self.setLayout(layout)
+        self._show_frame(0, 'off')
+
+    def _show_frame(self, frame_num, source):
+        self._cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+        flag, frame = self._cap.read()
+        if flag:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb.shape
+            qt_img = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+            self._frame_label.setPixmap(
+                QPixmap.fromImage(qt_img).scaled(800, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
+        name = 'Signal Off' if source == 'off' else 'Signal On'
+        self._info_label.setText(
+            f'{name}: frame {frame_num}   |   Off: {self.off_slider.value()}   On: {self.on_slider.value()}'
+        )
+
+    def get_range(self):
+        return self.off_slider.value(), self.on_slider.value()
+
+
+class ROIDrawWidget(QLabel):
+    """QLabel subclass that lets the user rubber-band a rectangle."""
+    def __init__(self, cv_frame):
+        super().__init__()
+        self._orig_h, self._orig_w = cv_frame.shape[:2]
+        rgb = cv2.cvtColor(cv_frame, cv2.COLOR_BGR2RGB)
+        qt_img = QImage(rgb.data, self._orig_w, self._orig_h, self._orig_w * 3, QImage.Format_RGB888)
+        self._pixmap = QPixmap.fromImage(qt_img).scaled(800, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.setPixmap(self._pixmap)
+        self.setFixedSize(self._pixmap.size())
+        self._disp_w = self._pixmap.width()
+        self._disp_h = self._pixmap.height()
+        self._start = None
+        self._end = None
+        self._rubber = QRubberBand(QRubberBand.Rectangle, self)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._start = event.pos()
+            self._rubber.setGeometry(QRect(self._start, QSize()))
+            self._rubber.show()
+
+    def mouseMoveEvent(self, event):
+        if self._start:
+            self._rubber.setGeometry(QRect(self._start, event.pos()).normalized())
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self._start:
+            self._end = event.pos()
+            self._rubber.setGeometry(QRect(self._start, self._end).normalized())
+
+    def get_roi(self):
+        if self._start is None or self._end is None:
+            return (0, 0, self._orig_w, self._orig_h)
+        rect = QRect(self._start, self._end).normalized()
+        sx = self._orig_w / self._disp_w
+        sy = self._orig_h / self._disp_h
+        return (int(rect.x() * sx), int(rect.y() * sy),
+                int(rect.width() * sx), int(rect.height() * sy))
+
+
+class ROISelector(QDialog):
+    """Modal dialog that shows a frame and lets the user drag an ROI rectangle."""
+    def __init__(self, cv_frame, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Select ROI — click and drag, then confirm')
+        layout = QVBoxLayout()
+        self._draw = ROIDrawWidget(cv_frame)
+        layout.addWidget(self._draw)
+        hint = QLabel('Click and drag to select the region of interest')
+        hint.setAlignment(Qt.AlignCenter)
+        layout.addWidget(hint)
+        ok_btn = QPushButton('Confirm ROI')
+        ok_btn.clicked.connect(self.accept)
+        layout.addWidget(ok_btn)
+        self.setLayout(layout)
+
+    def get_roi(self):
+        return self._draw.get_roi()
+
+
 """The kmeans frame finding process itself"""
 class sync(QWidget):
     def __init__(self, vid_name, elaborate = False):
@@ -340,12 +481,6 @@ class sync(QWidget):
                     sig_on_frame = frame[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
                     break
             return(sig_off_frame, sig_on_frame)
-
-        def onChange(trackbarValue):
-            cap.set(cv2.CAP_PROP_POS_FRAMES,trackbarValue)
-            flag,frame = cap.read()
-            cv2.imshow("video", frame)
-            pass
 
         def show_frame_of_interest(framenumber,r,cap):
             cap.set(cv2.CAP_PROP_POS_FRAMES,framenumber)
@@ -409,24 +544,29 @@ class sync(QWidget):
         self.vidName = vid_name
         cap = cv2.VideoCapture(vid_name)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        cv2.namedWindow('video')
-        cv2.createTrackbar( 'sig_off', 'video', 0, length, onChange )
-        cv2.createTrackbar( 'sig_on'  , 'video', 100, length, onChange )
-        onChange(0)
-        cv2.waitKey()
-        start = cv2.getTrackbarPos('sig_off','video')
-        end = cv2.getTrackbarPos('sig_on','video')
-        framerange = (start,end)
-        cv2.destroyAllWindows()
-        cap.set(cv2.CAP_PROP_POS_FRAMES,end)
+
+        range_dlg = FrameRangeSelector(cap, length)
+        if range_dlg.exec_() != QDialog.Accepted:
+            self.returns = None
+            self.frame_num = None
+            cap.release()
+            return
+        start, end = range_dlg.get_range()
+        framerange = (start, end)
+
+        cap.set(cv2.CAP_PROP_POS_FRAMES, end)
         while True:
             flag, frame = cap.read()
             if flag:
-                pos_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                cv2.imshow('video', frame)
                 break
-        r = cv2.selectROI(frame)
-        cv2.destroyAllWindows()
+
+        roi_dlg = ROISelector(frame)
+        if roi_dlg.exec_() != QDialog.Accepted:
+            self.returns = None
+            self.frame_num = None
+            cap.release()
+            return
+        r = roi_dlg.get_roi()
         frame_colors = []
         for frame in range(*framerange):
             cap.set(cv2.CAP_PROP_POS_FRAMES,frame)
@@ -474,6 +614,119 @@ class sync(QWidget):
                 break
         return frameROI
        
+class QuickCutWindow(QWidget):
+    def __init__(self, vid_path):
+        super().__init__()
+        self.vid_path = vid_path
+        self.cap = cv2.VideoCapture(vid_path)
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        self.current_frame = 0
+
+        self.setWindowTitle(f'Quick Cut - {os.path.basename(vid_path)}')
+        main_layout = QVBoxLayout()
+
+        self.frame_label = QLabel()
+        self.frame_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.frame_label)
+
+        self.frame_info = QLabel()
+        self.frame_info.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.frame_info)
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, max(0, self.total_frames - 1))
+        self.slider.sliderMoved.connect(self._update_label_only)
+        self.slider.sliderReleased.connect(lambda: self.display_frame(self.slider.value()))
+        main_layout.addWidget(self.slider)
+
+        nav = QHBoxLayout()
+        prev_btn = QPushButton('< Frame')
+        prev_btn.clicked.connect(self.prev_frame)
+        next_btn = QPushButton('Frame >')
+        next_btn.clicked.connect(self.next_frame)
+        nav.addWidget(prev_btn)
+        nav.addWidget(next_btn)
+        main_layout.addLayout(nav)
+
+        self.cut_btn = QPushButton('Cut here')
+        self.cut_btn.clicked.connect(self.cut_video)
+        main_layout.addWidget(self.cut_btn)
+
+        self.status_label = QLabel('')
+        self.status_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.status_label)
+
+        self.setLayout(main_layout)
+        self.display_frame(0)
+        self.show()
+
+    def _fmt_info(self, frame_num):
+        t = frame_num / self.fps if self.fps > 0 else 0
+        return f'Frame: {frame_num} / {max(0, self.total_frames - 1)}   Time: {t:.3f}s'
+
+    def _update_label_only(self, value):
+        self.frame_info.setText(self._fmt_info(value))
+
+    def convert_cv_qt(self, cv_img):
+        rgb = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb.shape
+        qt_img = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
+        return QPixmap.fromImage(qt_img).scaled(800, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+    def display_frame(self, frame_num):
+        self.current_frame = frame_num
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+        flag, frame = self.cap.read()
+        if flag:
+            self.frame_label.setPixmap(self.convert_cv_qt(frame))
+        self.frame_info.setText(self._fmt_info(frame_num))
+
+    def prev_frame(self):
+        new = max(0, self.current_frame - 1)
+        self.slider.setValue(new)
+        self.display_frame(new)
+
+    def next_frame(self):
+        new = min(self.total_frames - 1, self.current_frame + 1)
+        self.slider.setValue(new)
+        self.display_frame(new)
+
+    def cut_video(self):
+        cut_time = self.current_frame / self.fps if self.fps > 0 else 0
+        base, ext = os.path.splitext(self.vid_path)
+        before_path = base + '_before' + ext
+        after_path = base + '_after' + ext
+
+        self.status_label.setText('Cutting...')
+        self.cut_btn.setDisabled(True)
+        QApplication.processEvents()
+
+        try:
+            subprocess.run(
+                ['ffmpeg', '-i', self.vid_path, '-to', f'{cut_time:.6f}', '-c', 'copy', '-y', before_path],
+                check=True, capture_output=True
+            )
+            subprocess.run(
+                ['ffmpeg', '-i', self.vid_path, '-ss', f'{cut_time:.6f}', '-c', 'copy', '-y', after_path],
+                check=True, capture_output=True
+            )
+            self.status_label.setText(
+                f'Done! {os.path.basename(before_path)}  +  {os.path.basename(after_path)}'
+            )
+        except FileNotFoundError:
+            self.status_label.setText('Error: ffmpeg not found — please install ffmpeg.')
+        except subprocess.CalledProcessError as e:
+            self.status_label.setText('Error: ffmpeg failed — see terminal for details.')
+            print(e.stderr.decode())
+        finally:
+            self.cut_btn.setDisabled(False)
+
+    def closeEvent(self, event):
+        self.cap.release()
+        event.accept()
+
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = FileBrowser()
