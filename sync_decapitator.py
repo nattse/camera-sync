@@ -51,8 +51,10 @@ class cutter:
             self.output = cv2.VideoWriter(new_path, 
                                      cv2.VideoWriter_fourcc(*codec),
                                      vid_FPS, (width,height))
-            count = 0
-            dropped_count = 0
+            cap.set(cv2.CAP_PROP_POS_FRAMES, split_frame)                      # Seek by index the same way sync_gui_lite does. Without this,
+            print(f'starting frames here: {split_frame}')                      # counting frames off sequential reads skips the duplicate
+            count = 0                                                          # frames some .avi files carry in their index, so the cut
+            dropped_count = 0                                                  # lands later than the frame number sync_gui_lite reported
             frame_time = time.time()
             for a in tqdm(range(length)):
                 count += 1
