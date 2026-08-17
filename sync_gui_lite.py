@@ -29,7 +29,8 @@ from PyQt5.QtWidgets import (
     QFileDialog,
     QListWidget,
     QAbstractItemView,
-    QTabWidget
+    QTabWidget,
+    QMessageBox
 )
 import os
 import pandas as pd
@@ -82,9 +83,33 @@ class FileBrowser(QWidget):
     def quick_cut(self):
         selected = self.vid_list.selectedItems()
         target = selected[0].text() if selected else self.vid_list.item(0).text()
+        if not os.path.splitext(target)[1].lower() == '.avi':                   # Quick Cut stream-copies, which only cuts exactly on
+            if not self.warn_not_avi(target):                                   # all-intra video, so bail out unless told otherwise
+                return
         self.quick_cut_windows = getattr(self, 'quick_cut_windows', [])
         w = QuickCutWindow(target)
         self.quick_cut_windows.append(w)
+
+    def warn_not_avi(self, target):
+        """Warn that Quick Cut is only frame accurate on the mjpeg .avi files convert.sh makes.
+        Returns True if the user wants to go ahead anyway."""
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle('Not an .avi - frame numbers will be wrong')
+        box.setText(f'{os.path.basename(target)} is not an .avi file.')
+        box.setInformativeText(
+            'Quick Cut copies streams instead of re-encoding, so it can only cut exactly on '
+            'all-intra video - the mjpeg .avi files convert.sh produces.\n\n'
+            'On an inter-frame video like a GoPro .MP4, ffmpeg cannot cut mid-GOP. It drops the '
+            'frames between your cut point and the next keyframe and leaves a gap at the start of '
+            'the "_after" file. Converting that file to .avi afterwards pads the gap with duplicate '
+            'frames, which shifts every frame number you read off the cut video - by a different '
+            'amount for each camera.\n\n'
+            'Convert to .avi first with convert.sh, then Quick Cut the .avi.'
+        )
+        box.setStandardButtons(QMessageBox.Cancel | QMessageBox.Ignore)
+        box.setDefaultButton(QMessageBox.Cancel)
+        return box.exec_() == QMessageBox.Ignore
 
     def start(self):
         self.hide()
@@ -623,8 +648,21 @@ class QuickCutWindow(QWidget):
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.current_frame = 0
 
+        self.is_avi = os.path.splitext(vid_path)[1].lower() == '.avi'
         self.setWindowTitle(f'Quick Cut - {os.path.basename(vid_path)}')
         main_layout = QVBoxLayout()
+
+        if not self.is_avi:                                                     # Keep the warning on screen, not just in a dialog you
+            self.warning_banner = QLabel(                                       # clicked through five minutes ago
+                'WARNING: this is not an .avi - cutting it will shift every frame number '
+                'in the "_after" file. Convert with convert.sh first.'
+            )
+            self.warning_banner.setAlignment(Qt.AlignCenter)
+            self.warning_banner.setWordWrap(True)
+            self.warning_banner.setStyleSheet(
+                'background-color: #ffcc00; color: black; padding: 6px; font-weight: bold;'
+            )
+            main_layout.addWidget(self.warning_banner)
 
         self.frame_label = QLabel()
         self.frame_label.setAlignment(Qt.AlignCenter)
@@ -649,7 +687,7 @@ class QuickCutWindow(QWidget):
         nav.addWidget(next_btn)
         main_layout.addLayout(nav)
 
-        self.cut_btn = QPushButton('Cut here')
+        self.cut_btn = QPushButton('Cut here' if self.is_avi else 'Cut here (not frame accurate!)')
         self.cut_btn.clicked.connect(self.cut_video)
         main_layout.addWidget(self.cut_btn)
 
